@@ -29,9 +29,16 @@ namespace CS2GamblingSim.Services
 			var data = await _httpClient.GetStringAsync(Constants.CS2CASESAPI);
 
 			var json = JsonConvert.DeserializeObject<List<CasesDto>>(data);
-			var crate = json.FirstOrDefault(c => c.Id.Contains(caseId));
+			var crate = json.FirstOrDefault(c => c.Id == caseId);
 
 			return crate;
+		}
+		public async Task<string> GetCaseNameAsync(string caseId)
+		{
+			var data = await _httpClient.GetStringAsync(Constants.CS2CASESAPI);
+			var json = JsonConvert.DeserializeObject<List<CasesDto>>(data);
+			var crate = json.FirstOrDefault(c => c.Id == caseId);
+			return crate?.Name ?? "Unknown Case";
 		}
 	}
 }
