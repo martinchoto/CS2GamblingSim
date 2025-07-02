@@ -1,0 +1,50 @@
+﻿@page "/cases"
+@inject CSGOApiService ApiService
+
+<h1 class="mb-4 text-center">Cases Collection</h1>
+
+@if (skins == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        @foreach (var skin in skins)
+        {
+            <div class="col hover-parent">
+                <div class="card h-100 shadow-sm">
+                    <img src="@skin.Image" class="card-img-top" alt="@skin.Name" style="object-fit: cover; height: 200px;" />
+                    <div class="card-body">
+						<h5 class="card-title text-center">@skin.Name</h5>
+                    </div>
+                    <a class="btn btn-success hover-child" href="/cases/@skin.Id">Play</a>
+                </div>
+            </div>
+        }
+    </div>
+}
+<style>
+    .hover-child {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease;
+    }
+
+    .hover-parent:hover .hover-child {
+        opacity: 1;
+        visibility: visible;
+    }
+</style>
+@code {
+    private List<CasesDto> skins;
+
+    protected override async Task OnInitializedAsync()
+    {
+        skins = await ApiService.GetCasesAsync();
+    }
+}

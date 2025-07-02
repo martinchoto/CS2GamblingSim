@@ -1,6 +1,7 @@
 using CS2GamblingSim.Components;
 using CS2GamblingSim.Components.Account;
 using CS2GamblingSim.Data;
+using CS2GamblingSim.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<CSGOApiService>();
 
 var app = builder.Build();
 
