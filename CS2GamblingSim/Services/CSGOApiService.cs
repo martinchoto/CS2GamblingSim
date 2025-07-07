@@ -24,21 +24,12 @@ namespace CS2GamblingSim.Services
 
 			return allCases;
 		}
-		public async Task<CasesDto> GetSkinsAsync(string caseId)
+		public async Task<CasesDto> GetCaseAsync(string caseId)
 		{
-			var data = await _httpClient.GetStringAsync(Constants.CS2CASESAPI);
-
-			var json = JsonConvert.DeserializeObject<List<CasesDto>>(data);
-			var crate = json.FirstOrDefault(c => c.Id == caseId);
-
-			return crate;
-		}
-		public async Task<string> GetCaseNameAsync(string caseId)
-		{
+			Console.WriteLine($"Fetching case with ID: {caseId}");
 			var data = await _httpClient.GetStringAsync(Constants.CS2CASESAPI);
 			var json = JsonConvert.DeserializeObject<List<CasesDto>>(data);
-			var crate = json.FirstOrDefault(c => c.Id == caseId);
-			return crate?.Name ?? "Unknown Case";
+			return json.FirstOrDefault(c => c.Id == caseId) ?? null;
 		}
 	}
 }

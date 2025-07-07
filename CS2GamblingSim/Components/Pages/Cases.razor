@@ -29,21 +29,8 @@ else
         }
     </div>
 }
-<style>
-
-    .hover-child {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s ease;
-    }
-
-    .hover-parent:hover .hover-child {
-        opacity: 1;
-        visibility: visible;
-    }
-</style>
 @code {
-    private List<CasesDto> skins;
+	private List<CasesDto> skins = new List<CasesDto>();
 
     protected override async Task OnInitializedAsync()
     {
