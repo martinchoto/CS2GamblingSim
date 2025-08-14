@@ -1,39 +1,322 @@
 ﻿@page "/cases"
 @inject CSGOApiService ApiService
+@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
 
-<PageTitle>Cases</PageTitle>
-<h1 class="mb-4 text-center">Cases Collection</h1>
+<PageTitle>Cases - CS2 Gambling</PageTitle>
 
-@if (skins == null)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-2 text-center display-4 fw-bold text-gradient">Cases Collection</h1>
+            <p class="text-center text-muted mb-4">Choose your case and test your luck!</p>
         </div>
     </div>
-}
-else
-{
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-        @foreach (var skin in skins)
-        {
-            <div class="col hover-parent">
-                <div class="card h-100 shadow-sm">
-                    <img src="@skin.Image" class="card-img-top" alt="@skin.Name" style="object-fit: cover; height: 200px;" />
-                    <div class="card-body">
-						<h5 class="card-title text-center">@skin.Name</h5>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading cases...</span>
+                </div>
+                <h5 class="text-muted">Loading amazing cases...</h5>
+            </div>
+        </div>
+    }
+    else if (hasError)
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-danger text-center" role="alert">
+                    <h4 class="alert-heading">Oops! Something went wrong</h4>
+                    <p>We couldn't load the cases. Please check your connection and try again.</p>
+                    <hr>
+                    <button class="btn btn-outline-danger" @onclick="LoadCasesAsync">
+                        <i class="fas fa-refresh me-2"></i>Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else if (cases == null || !cases.Any())
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-info text-center" role="alert">
+                    <h4 class="alert-heading">No Cases Available</h4>
+                    <p>There are currently no cases available. Check back later!</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Search and Filter Section -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Search cases..."
+                           @bind="searchTerm"
+                           @bind:event="oninput"
+                           @onkeyup="FilterCases" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Cases Grid -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4">
+            @foreach (var caseItem in filteredCases)
+            {
+                <div class="col">
+                    <div class="card case-card h-100 shadow-sm border-0">
+
+                        <div class="position-relative overflow-hidden">
+                            <img src="@caseItem.Image"
+                                 class="card-img-top case-image"
+                                 alt="@caseItem.Name"
+                                 loading="lazy"
+                                 @onerror="@((args) => HandleImageError(caseItem))" />
+
+                            <!-- Hover Overlay -->
+                            <div class="case-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                                <a href="/cases/@caseItem.Id"
+                                   class="btn btn-success btn-lg px-4 case-play-btn">
+                                    <i class="fas fa-play me-2"></i>Open Case
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="card-body text-center p-3">
+                            <h5 class="card-title mb-2 text-truncate" title="@caseItem.Name">
+                                @caseItem.Name
+                            </h5>
+
+                           
+                        </div>
+
+                        <div class="card-footer bg-transparent border-0 p-3 pt-0">
+                            <a href="/cases/@caseItem.Id"
+                               class="btn btn-outline-success w-100 case-btn">
+                                <i class="fas fa-lock-open me-2"></i>Open Case
+                            </a>
+                        </div>
                     </div>
-                    <a class="btn btn-success hover-child" href="/cases/@skin.Id">Play</a>
+                </div>
+            }
+        </div>
+
+        @if (filteredCases.Count == 0 && !string.IsNullOrEmpty(searchTerm))
+        {
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6">
+                    <div class="alert alert-warning text-center" role="alert">
+                        <h5>No cases found</h5>
+                        <p>No cases match your search term "@searchTerm"</p>
+                        <button class="btn btn-outline-warning" @onclick="ClearSearch">
+                            Clear Search
+                        </button>
+                    </div>
                 </div>
             </div>
         }
-    </div>
-}
+
+        <!-- Load More Button (if pagination is needed) -->
+        @if (hasMoreCases)
+        {
+            <div class="row justify-content-center mt-4">
+                <div class="col-auto">
+                    <button class="btn btn-outline-primary btn-lg"
+                            @onclick="LoadMoreCases"
+                            disabled="@isLoadingMore">
+                        @if (isLoadingMore)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-plus me-2"></i>
+                        }
+                        Load More Cases
+                    </button>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .text-gradient {
+        background: linear-gradient(45deg, #007bff, #28a745);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .case-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+        .case-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 123, 255, 0.15) !important;
+        }
+
+    .case-image {
+        height: 200px;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .case-card:hover .case-image {
+        transform: scale(1.05);
+    }
+
+    .case-overlay {
+        background: rgba(0, 0, 0, 0.7);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .case-card:hover .case-overlay {
+        opacity: 1;
+    }
+
+    .case-play-btn {
+        transform: scale(0.8);
+        transition: transform 0.3s ease;
+    }
+
+    .case-card:hover .case-play-btn {
+        transform: scale(1);
+    }
+
+    .case-btn {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+    }
+
+        .case-btn:hover {
+            transform: translateY(-1px);
+        }
+</style>
+
 @code {
-	private List<CasesDto> skins = new List<CasesDto>();
+    private List<CasesDto> cases = new List<CasesDto>();
+    private List<CasesDto> filteredCases = new List<CasesDto>();
+    private bool isLoading = true;
+    private bool hasError = false;
+    private bool hasMoreCases = false;
+    private bool isLoadingMore = false;
+    private string searchTerm = string.Empty;
+    private Timer? searchDebounceTimer;
 
     protected override async Task OnInitializedAsync()
     {
-        skins = await ApiService.GetCasesAsync();
+        await LoadCasesAsync();
+    }
+
+    private async Task LoadCasesAsync()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            StateHasChanged();
+
+            cases = await ApiService.GetCasesAsync();
+            filteredCases = cases.ToList();
+
+            // Check if there are more cases to load (implement pagination logic as needed)
+            hasMoreCases = cases.Count >= 20; // Adjust based on your pagination logic
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            // Log the exception if you have logging configured
+            Console.WriteLine($"Error loading cases: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreCases()
+    {
+        try
+        {
+            isLoadingMore = true;
+            StateHasChanged();
+
+            // Implement your pagination logic here
+            // var moreCases = await ApiService.GetCasesAsync(skip: cases.Count, take: 20);
+            // cases.AddRange(moreCases);
+            // FilterCases();
+
+            await Task.Delay(1000); // Simulate loading
+            hasMoreCases = false; // Set based on actual pagination logic
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error loading more cases: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private void FilterCases()
+    {
+        searchDebounceTimer?.Dispose();
+        searchDebounceTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(() =>
+            {
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    filteredCases = cases.ToList();
+                }
+                else
+                {
+                    filteredCases = cases.Where(c =>
+                        c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                    ).ToList();
+                }
+                StateHasChanged();
+            });
+        }, null, 300, Timeout.Infinite);
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        filteredCases = cases.ToList();
+        StateHasChanged();
+    }
+
+    private void HandleImageError(CasesDto caseItem)
+    {
+
+        caseItem.Image = "/images/default-case.png"; // Set your default image path
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        searchDebounceTimer?.Dispose();
     }
 }
